@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Wellness Tracker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #E8E0D4;
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .header {
+            background-color: #C4D4B0;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .date-nav {
+            margin: 10px 0;
+        }
+        .nav-btn {
+            background: white;
+            border: 1px solid #ccc;
+            padding: 5px 10px;
+            margin: 0 5px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        .activity-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .activity-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        .activity-label {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .checkbox {
+            width: 30px;
+            height: 30px;
+            border: 2px solid #ccc;
+            display: inline-block;
+            text-align: center;
+            line-height: 26px;
+            cursor: pointer;
+            border-radius: 4px;
+            background: white;
+        }
+        .checkbox.checked {
+            background: #F8BBD0;
+            border-color: #F48FB1;
+        }
+        .scale-buttons {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+        .scale-btn {
+            width: 30px;
+            height: 30px;
+            border: 1px solid #ccc;
+            background: white;
+            cursor: pointer;
+            text-align: center;
+            line-height: 28px;
+            border-radius: 4px;
+        }
+        .scale-btn.active {
+            background: #3B82F6;
+            color: white;
+        }
+        .time-input {
+            width: 60px;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .export-section {
+            margin-top: 30px;
+            text-align: center;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .export-btn {
+            background: #4F46E5;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Daily Wellness Tracker</h1>
+            <div class="date-nav">
+                <button class="nav-btn" onclick="changeDate(-1)">← Previous Day</button>
+                <span id="currentDate">Today</span>
+                <button class="nav-btn" onclick="changeDate(1)">Next Day →</button>
+            </div>
+            <div id="moonPhase">🌕 Full Moon</div>
+        </div>
+
+        <div class="activity-grid" id="activities">
+            <!-- Activities will be loaded here -->
+        </div>
+
+        <div class="export-section">
+            <h3>Save Your Data</h3>
+            <button class="export-btn" onclick="exportData()">Export Data</button>
+            <button class="export-btn" onclick="document.getElementById('fileInput').click()">Import Data</button>
+            <input type="file" id="fileInput" style="display: none;" accept=".json" onchange="importData(event)">
+        </div>
+    </div>
+
+    <script>
+        // Test that JavaScript is working
+        console.log("JavaScript loaded successfully!");
+        
+        // Simple data storage in memory
+        let currentDate = new Date();
+        let data = {};
+        
+        // Activities list
+        const activities = [
+            { key: 'meditation', label: 'Meditation (minutes)', type: 'time' },
+            { key: 'movement', label: 'Movement (minutes)', type: 'time' },
+            { key: 'handCreation', label: 'Hand Creation', type: 'boolean' },
+            { key: 'wine', label: 'Wine', type: 'boolean' },
+            { key: 'wholeFoods', label: 'Whole Foods', type: 'boolean' },
+            { key: 'moodWaking', label: 'Mood Upon Waking (0-10)', type: 'scale' },
+            { key: 'moodBedtime', label: 'Mood at Bedtime (0-10)', type: 'scale' },
+            { key: 'waterIntake', label: 'Water Intake (0-10)', type: 'scale' },
+            { key: 'dairySugar', label: 'Dairy/Sugar Beyond Need', type: 'boolean' },
+            { key: 'sleepQuality', label: 'Sleep Prior Night (0-10)', type: 'scale' },
+            { key: 'outsideGrounding', label: 'Outside Grounding', type: 'boolean' },
+            { key: 'harveyTime', label: 'Harvey Time', type: 'boolean' },
+            { key: 'eatingOut', label: 'Eating Out', type: 'boolean' },
+            { key: 'cookedMeal', label: 'Cooked Meal', type: 'boolean' },
+            { key: 'stayedInHeart', label: 'Stayed in My Heart (0-10)', type: 'scale' },
+            { key: 'groupActivity', label: 'Group Activity', type: 'boolean' },
+            { key: 'bowelMovement', label: 'Bowel Movement', type: 'boolean' },
+            { key: 'pain', label: 'Pain (0-10)', type: 'scale' }
+        ];
+
+        function formatDate(date) {
+            return date.toISOString().split('T')[0];
+        }
+
+        function updateData(key, value) {
+            const dateKey = formatDate(currentDate);
+            if (!data[dateKey]) data[dateKey] = {};
+            data[dateKey][key] = value;
+            console.log('Updated:', key, value);
+        }
+
+        function getCurrentData() {
+            const dateKey = formatDate(currentDate);
+            return data[dateKey] || {};
+        }
+
+        function changeDate(days) {
+            currentDate.setDate(currentDate.getDate() + days);
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            // Update date display
+            document.getElementById('currentDate').textContent = 
+                currentDate.toLocaleDateString('en-US', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                });
+            
+            // Update moon phase (simplified)
+            const moons = ['🌑', '🌒', '🌓', '🌔', '🌕', '🌖', '🌗', '🌘'];
+            const moonIndex = Math.floor((currentDate.getDate() % 28) / 3.5);
+            document.getElementById('moonPhase').textContent = moons[moonIndex] + ' Moon Phase';
+            
+            renderActivities();
+        }
+
+        function renderActivities() {
+            const container = document.getElementById('activities');
+            const currentData = getCurrentData();
+            
+            container.innerHTML = activities.map(activity => {
+                let inputHtml = '';
+                
+                if (activity.type === 'boolean') {
+                    const checked = currentData[activity.key] || false;
+                    inputHtml = `
+                        <div class="checkbox ${checked ? 'checked' : ''}" 
+                             onclick="updateData('${activity.key}', ${!checked}); renderActivities()">
+                            ${checked ? '✓' : ''}
+                        </div>
+                    `;
+                } else if (activity.type === 'scale') {
+                    const value = currentData[activity.key];
+                    inputHtml = `
+                        <div class="scale-buttons">
+                            ${Array.from({length: 11}, (_, i) => `
+                                <div class="scale-btn ${value === i ? 'active' : ''}" 
+                                     onclick="updateData('${activity.key}', ${i}); renderActivities()">
+                                    ${i}
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                } else if (activity.type === 'time') {
+                    const value = currentData[activity.key] || '';
+                    inputHtml = `
+                        <input type="number" class="time-input" 
+                               value="${value}" placeholder="0" min="0"
+                               onchange="updateData('${activity.key}', parseInt(this.value) || 0)">
+                    `;
+                }
+                
+                return `
+                    <div class="activity-card">
+                        <div class="activity-label">${activity.label}</div>
+                        ${inputHtml}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function exportData() {
+            const dataStr = JSON.stringify(data, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'wellness-data-' + formatDate(new Date()) + '.json';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const importedData = JSON.parse(e.target.result);
+                        data = { ...data, ...importedData };
+                        renderActivities();
+                        alert('Data imported successfully!');
+                    } catch (error) {
+                        alert('Error importing data');
+                    }
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log("Page loaded, initializing...");
+            updateDisplay();
+        });
+
+        // Fallback initialization
+        setTimeout(function() {
+            if (document.getElementById('activities').innerHTML === '') {
+                console.log("Fallback initialization");
+                updateDisplay();
+            }
+        }, 100);
+    </script>
+</body>
+</html>
